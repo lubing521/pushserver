@@ -1,0 +1,11 @@
+HKCR
+{
+	NoRemove AppID
+	{
+		{87AB90ED-EFD4-4A6B-9CC7-6C87D5704FED} = s 'senderserver'
+		'senderserver.EXE'
+		{
+			val AppID = s {87AB90ED-EFD4-4A6B-9CC7-6C87D5704FED}
+		}
+	}
+}

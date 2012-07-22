@@ -1,0 +1,14 @@
+# Microsoft Developer Studio Generated Dependency File, included by senderserver.mak
+
+.\senderserver.cpp : \
+	".\senderserver.h"\
+	".\StdAfx.h"\
+	
+
+.\senderserver.rc : \
+	".\senderserver.rgs"\
+	
+
+.\StdAfx.cpp : \
+	".\StdAfx.h"\
+	

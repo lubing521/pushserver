@@ -1,0 +1,77 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: senderserver - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC0.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"Debug/" /Fp"Debug/senderserver.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"D:\TDDownload\senderserver0721\Server.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC0.tmp" 
+Creating temporary file "C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC1.tmp" with contents
+[
+/nologo /subsystem:windows /incremental:yes /pdb:"Debug/senderserver.pdb" /debug /machine:I386 /out:"Debug/senderserver.exe" /pdbtype:sept 
+.\Debug\client.obj
+.\Debug\ClientManager.obj
+.\Debug\db.obj
+.\Debug\Loader.obj
+.\Debug\log.obj
+.\Debug\Manager.obj
+.\Debug\SeException.obj
+.\Debug\sender.obj
+.\Debug\senderserver.obj
+.\Debug\Server.obj
+.\Debug\StdAfx.obj
+.\Debug\tools.obj
+.\Debug\Worker.obj
+.\Debug\senderserver.res
+.\WS2_32.LIB
+.\libmysql.lib
+.\mysqlclient.lib
+]
+Creating command line "link.exe @C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC1.tmp"
+Creating temporary file "C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC2.bat" with contents
+[
+@echo off
+".\Debug\senderserver.exe" /RegServer
+echo regsvr32 exec. time > ".\Debug\regsvr32.trg"
+echo Server registration done!
+]
+Creating command line "C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC2.bat"
+Compiling...
+Server.cpp
+Linking...
+<h3>Output Window</h3>
+Performing registration
+Server registration done!
+Creating temporary file "C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC3.tmp" with contents
+[
+/nologo /o"Debug/senderserver.bsc" 
+.\Debug\StdAfx.sbr
+.\Debug\client.sbr
+.\Debug\ClientManager.sbr
+.\Debug\db.sbr
+.\Debug\Loader.sbr
+.\Debug\log.sbr
+.\Debug\Manager.sbr
+.\Debug\SeException.sbr
+.\Debug\sender.sbr
+.\Debug\senderserver.sbr
+.\Debug\Server.sbr
+.\Debug\tools.sbr
+.\Debug\Worker.sbr]
+Creating command line "bscmake.exe @C:\DOCUME~1\acer\LOCALS~1\Temp\RSPC3.tmp"
+Creating browse info file...
+<h3>Output Window</h3>
+
+
+
+<h3>Results</h3>
+senderserver.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
