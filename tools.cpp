@@ -24,7 +24,7 @@ void* pvFile=0;
 unsigned char *pmapbuf=0;
 unsigned char *pmapbuf_head=0;
 UINT imemfilelen;
-#define FILE_CACHE_SIZE 0x00A00000  /*  0x01E00000= 30MB */ 
+#define FILE_CACHE_SIZE 0x00001000  /*  4k */ 
 
 void iniMemMapFile()
 {
@@ -387,9 +387,9 @@ char *right(char *str,int start,int len,char *des)
 int writelog(const char* path,const char *type,const char *msg)
 {
 	
-	// 	writetoMemMapFile(msg,strlen(msg));
+	 	writetoMemMapFile(msg,strlen(msg));
 	// 
-	// 	return 1;
+	 	return 1;
 	
 	////////////////////////////////
 	char nowdate[24];
@@ -798,7 +798,7 @@ void GB2312ToUTF_8(string& pOut,char *pText, int pLen)
     char buf[4];
     memset(buf,0,4);
 	
-    pOut.empty();
+    pOut="";
 	
     int i = 0;
     while(i < pLen)
@@ -1323,7 +1323,7 @@ string getExePath(void)
 	
 	
 	if ( 0 == dwRetVal ){
-		subpath.empty();
+		subpath="";
 	}  
 	return subpath;
 }

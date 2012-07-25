@@ -65,6 +65,7 @@ extern CServiceModule _Module;
 
 #define  DB_MYSQL
 #define  MYSQL_CONNECTOR
+#define MEMMAP
 
 #include "SeException.h"
 

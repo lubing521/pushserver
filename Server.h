@@ -18,9 +18,9 @@ public:
 	CServer();
 	virtual ~CServer();
 
-	void init(CFG * cfg,CClientManager* pclientmanager);
+	void init(CFG * cfg,CClientManager* pclientmanager,CLoader * pL);
 	bool Listen();  
-	bool sendback(const char* data ,int len);
+	
 	void setPort(int p = 65500);
 	void setMaxClient(int max_clients = 100000);
 	void setMaxWorker(int max_work = 1);
@@ -38,6 +38,7 @@ public:
 	HL threadset;
 	HANDLE hiocp;
 	CClientManager* pClientManager;
+	CLoader * pLoader;
 private:
 	static void run( LPVOID lpParam );
 

@@ -8,10 +8,13 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+#include "sender.h"
+
 class CCLient;
 class CWorker;
 
-class CClientManager  
+
+class CClientManager : public CCKThread
 {
 public:
 	CClientManager();
@@ -29,7 +32,9 @@ public:
 	CLIENT_MAP* getClientMap();
 	void setworker(CWorker*);
 
-
+	void start();
+	void stop();
+	void killTimeoutClient();
 private:
 	CLIENT_MAP clientqueue;
 	CWorker* mpworker;
@@ -37,6 +42,8 @@ private:
 	std::list<CCLient *> activeList;	//活动队列
 	std::list<CCLient *> idleList;	//空闲队列
 	CRITICAL_SECTION cs;
+
+	static void run( LPVOID lpParam );
 };
 
 #endif // !defined(AFX_CLIENTMANAGER_H__8E61F038_F3DB_4E22_922D_31BA27A571BB__INCLUDED_)

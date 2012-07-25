@@ -23,7 +23,7 @@ CWorker::CWorker():in_exit_flag(false),mpclm(NULL),mpinfoqueue(NULL),mploader(NU
 
 CWorker::~CWorker()
 {
-
+	
 }
 void CWorker::init(CClientManager* pclm, CLoader * loader)
 {
@@ -50,6 +50,7 @@ void CWorker::stop()
 //{"statuscode":"0"}
 string mkjson(Cinfo* pin)
 {
+
 	string s("{\"statuscode\":\"");
 	if (pin)
 	{
@@ -63,7 +64,7 @@ string mkjson(Cinfo* pin)
 	} 
 	else
 	{
-		s.append("0\"}\r\n");
+		s.append("0\"}\r\n");		
 	}
     return s;
 }
@@ -82,7 +83,7 @@ void CWorker::run( LPVOID lpParam )
 	bool sendedflag =false;
 	bool needinsertdb =false;
 	char num[10]={0};
-
+	
 	while(!allExitFlag )
 	{
 		dwResult = WaitForSingleObject(p->mEvent, INFINITE);
@@ -100,98 +101,108 @@ void CWorker::run( LPVOID lpParam )
 					//send info
 					string sql("");
 					string onesql("");
-
+					
 					it = p->mpclm->getClientMap()->begin();
 					while(it != p->mpclm->getClientMap()->end())
 					{
-						if (it->second) //client 存在
-						{		
-							currentid = 0;
-							needinsertdb =false;
-
-							imit = p->mploader->getImeiIdMap()->find(it->first);
-							if (imit != p->mploader->getImeiIdMap()->end()) // IMEI-ID数据表中已经有记录信息版本
+						if (it->second && strlen(it->second->imei)) //client 存在
+						{
+							_set_se_translator(SeTranslator);
+							try
 							{
-								currentid = imit->second;								
-							}
-							else  //IMEI-ID数据表中还没有记录，则新增
-							{
-								needinsertdb = true;
-								p->mploader->getImeiIdMap()->insert(pair<string, UINT>(string(it->second->imei),currentid));
-								     
-							}
-
-							sendedflag = false;
-
-							EnterCriticalSection(&g_cs);
-
-							infoit= p->mpinfoqueue->begin();	
-							
-
-							while(infoit != p->mpinfoqueue->end())
-							{																 	
-								//有新info需要下发
-								if (infoit->first > currentid)
+								currentid = 0;
+								needinsertdb =false;
+								
+								imit = p->mploader->getImeiIdMap()->find(it->first);
+								if (imit != p->mploader->getImeiIdMap()->end()) // IMEI-ID数据表中已经有记录信息版本
 								{
-									sendedflag = true;
-									string strbk = mkjson(infoit->second);
+									currentid = imit->second;								
+								}
+								else  //IMEI-ID数据表中还没有记录，则新增
+								{
+									needinsertdb = true;
+									p->mploader->getImeiIdMap()->insert(pair<string, UINT>(string(it->second->imei),currentid));
+									
+								}
+								
+								sendedflag = false;
+								
+								EnterCriticalSection(&g_cs);
+								
+								infoit= p->mpinfoqueue->begin();	
+								
+								
+								while(infoit != p->mpinfoqueue->end())
+								{																 	
+									//有新info需要下发
+									if (infoit->first > currentid)
+									{
+										sendedflag = true;
+										string strbk = mkjson(infoit->second);
+										it->second->sendback(strbk.c_str(),strbk.length());
+									}
+									currentid = infoit->first;
+									++infoit;
+								}
+								LeaveCriticalSection(&g_cs);
+								
+								if (!sendedflag) ///no info then send back "{"statuscode":"0"}"
+								{
+									string strbk = mkjson(NULL);
 									it->second->sendback(strbk.c_str(),strbk.length());
 								}
-								currentid = infoit->first;
-								++infoit;
+								else  
+								{    
+									// update IMEI-ID
+									imit = p->mploader->getImeiIdMap()->find(it->first);
+									imit->second = currentid;
+									
+									// 更新当前imei id 数据库表
+									
+									if (needinsertdb)
+									{									
+										onesql = "insert into Table_Relation_PushMsg_Mobile (push_msg_id,imei) values('";
+										memset(num,0,sizeof(num));
+										onesql.append(itoa(currentid,num ,10));
+										onesql.append("','");
+										onesql.append(it->first);
+										onesql.append("');");									
+									}
+									else
+									{
+										onesql = "update Table_Relation_PushMsg_Mobile set push_msg_id='";
+										onesql.append(itoa(currentid,num,10));
+										onesql.append("' where imei ='");
+										onesql.append(it->first);
+										onesql.append("';");
+									}
+									LogExt(LOG_LOG_LEVEL,"[sql]%s",onesql.c_str());
+									sql.append(onesql);
+									onesql="";
+									
+								}
+								
+								p->mpclm->KillClient(it->second);
+								it->second = NULL;							
 							}
-							LeaveCriticalSection(&g_cs);
-
-							if (!sendedflag) ///no info then send back "{"statuscode":"0"}"
+							catch(CSeException *e)
 							{
-								string strbk = mkjson(NULL);
-								it->second->sendback(strbk.c_str(),strbk.length());
-							}
-							else  
-							{    
-								// update IMEI-ID
-								imit = p->mploader->getImeiIdMap()->find(it->first);
-								imit->second = currentid;
-								
-								// 更新当前imei id 数据库表
-								
-								if (needinsertdb)
-								{									
-									onesql = "insert into Table_Relation_PushMsg_Mobile (push_msg_id,imei) values('";
-									memset(num,0,sizeof(num));
-									onesql.append(itoa(currentid,num ,10));
-									onesql.append("','");
-									onesql.append(it->first);
-									onesql.append("');");									
-								}
-								else
-								{
-									onesql = "update Table_Relation_PushMsg_Mobile set push_msg_id='";
-									onesql.append(itoa(currentid,num,10));
-									onesql.append("' where imei ='");
-									onesql.append(it->first);
-									onesql.append("';");
-								}
-								LogExt(LOG_LOG_LEVEL,"[sql]%s",onesql.c_str());
-								sql.append(onesql);
-								onesql.empty();
-
-							}
-							//client close
-							it->second->Close();							
-							it->second = NULL;							
-							
+								exceptiontolog(e);							
+							}	
 						}
 						else
 						{
 							++it;
 						}						
-
+						
 					}//all client over	
+					if (!sql.empty())
+					{
+						BBT_DOSQL(sql.c_str());
+						sql="";
+					}
 					
-					BBT_DOSQL(sql.c_str());
-					sql.empty();
-
+					
 				}
 				
 			}

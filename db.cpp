@@ -105,9 +105,9 @@ bool DataBaseIni(const char *m_strServerName, const char *m_strUserName,const ch
 // but is widely implemented in C libraries across all platforms.
 ////////////////////////
 /// 
-bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
+void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 {
-	bool bRet = false;
+
 
 	try
 	{
@@ -149,16 +149,16 @@ bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 		switch(	mysql_query(conn, "SELECT id,title,body,link_page_id,UNIX_TIMESTAMP(stop_time) FROM Table_BaseInfo_PushMsg where CURRENT_TIMESTAMP() < stop_time order by id ;"))
 		{
 		case CR_COMMANDS_OUT_OF_SYNC:
-			OutputDebugString("CR_COMMANDS_OUT_OF_SYNC");
+			DEBUGOUT("CR_COMMANDS_OUT_OF_SYNC");
 			break;
 		case CR_SERVER_GONE_ERROR:
-			OutputDebugString("CR_SERVER_GONE_ERROR");
+			DEBUGOUT("CR_SERVER_GONE_ERROR");
 			break;
 		case CR_SERVER_LOST:
-			OutputDebugString("CR_SERVER_LOST");
+			DEBUGOUT("CR_SERVER_LOST");
 			break;
 		case CR_UNKNOWN_ERROR:
-			OutputDebugString("CR_SERVER_LOST");
+			DEBUGOUT("CR_SERVER_LOST");
 			break;
 		default:
 			break;
@@ -173,7 +173,7 @@ bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 		
 		while ((row = mysql_fetch_row(result)))
 		{
-			//bRet = true;
+		 
 			idd  = atol(row[0]);  
 			it= mapinfo->find(idd); 
 			if (it == mapinfo->end() )
@@ -203,16 +203,16 @@ bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 		switch(	mysql_query(conn, "SELECT imei,push_msg_id FROM  Table_Relation_PushMsg_Mobile ;"))
 		{
 		case CR_COMMANDS_OUT_OF_SYNC:
-			OutputDebugString("CR_COMMANDS_OUT_OF_SYNC");
+			DEBUGOUT("CR_COMMANDS_OUT_OF_SYNC");
 			break;
 		case CR_SERVER_GONE_ERROR:
-			OutputDebugString("CR_SERVER_GONE_ERROR");
+			DEBUGOUT("CR_SERVER_GONE_ERROR");
 			break;
 		case CR_SERVER_LOST:
-			OutputDebugString("CR_SERVER_LOST");
+			DEBUGOUT("CR_SERVER_LOST");
 			break;
 		case CR_UNKNOWN_ERROR:
-			OutputDebugString("CR_SERVER_LOST");
+			DEBUGOUT("CR_SERVER_LOST");
 			break;
 		default:
 			break;
@@ -224,7 +224,7 @@ bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 		
 		while ((row = mysql_fetch_row(result)))
 		{
-			bRet=true;
+			
 			mapimei->insert(pair<string, UINT>(row[0], atol(row[1])));	//<imei,id>	//ÎÞÐò	
 		}
 		mysql_free_result(result);
@@ -236,7 +236,7 @@ bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 	{
 		LogExt(CRITICAL_LEVEL,TEXT("[exception]loaddb exception13!\n"));
 	}
-	return bRet;
+	return ;
 	
 	
 }

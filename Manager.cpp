@@ -22,7 +22,7 @@
 #include "Manager.h"
 //////////////////////////////////////////////////////////////////////
 bool allExitFlag	 = false;     //exception exit
-bool stopServiceFlag = false;//stop service
+
 Clog	g_log;
 CFG		g_cfg;
 
@@ -58,10 +58,11 @@ void readcfg()
 	GetPrivateProfileString("DBSERVER", "psw", "123456",str,19, filepath.c_str());
 	g_cfg.db_psw  = str;
 	GetPrivateProfileString("DBSERVER", "IP", "127.0.0.1",str,19, filepath.c_str());
-	g_cfg.db_ip.empty();
+	g_cfg.db_ip="";
 	g_cfg.db_ip.append(str);
 	g_cfg.db_port = GetPrivateProfileInt("DBSERVER", "PORT", 3306, filepath.c_str());
-	
+	//
+	g_cfg.outtime = GetPrivateProfileInt("LINK", "outtime", 1, filepath.c_str());
 	
 	
 }
@@ -71,7 +72,7 @@ void setallthreadexitflag()
 {
 	allExitFlag = true;
 	
-	g_log.log("setallthreadexitflag !!!",ERROR_LEVEL);
+	g_log.log("[exception]setallthreadexitflag !!!",ERROR_LEVEL);
 	stopFrommyInter();
 	
 }
@@ -101,10 +102,12 @@ void CManager::start()
 	loader.start();
 
 	clientmanager.setworker(&worker); //for setevent to worker
+	clientmanager.start();
+
 	worker.init(&clientmanager,&loader);
 	worker.start();
 
-	server.init(&g_cfg,&clientmanager);
+	server.init(&g_cfg,&clientmanager,&loader);
 	server.Listen();
 	server.start();
 	
@@ -112,7 +115,10 @@ void CManager::start()
 
 void CManager::stop()
 {	
-	allExitFlag = true;
+	allExitFlag = true;	
+
+	server.stop();
+	clientmanager.stop();
 	worker.stop();
 	loader.stop();
 }

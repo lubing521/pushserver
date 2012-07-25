@@ -14,8 +14,9 @@
 #include "log.h"
 #include "ClientManager.h"
 #pragma warning (disable:4786)
-
+#pragma warning (disable:4089)
 extern  Clog g_log;
+extern  CFG g_cfg;
 
 void ini(CCLient * client,int fd, sockaddr_in sinaddr)
 {
@@ -34,8 +35,8 @@ void ini(CCLient * client,int fd, sockaddr_in sinaddr)
 		err = ioctlsocket( fd, FIONBIO, &data );
 		if( err != 0 )
 		{
-#ifdef _DEBUG
-			OutputDebugString("ioctlsocket call succeeded without initializing winsock\n");
+#ifdef DEBUG
+			DEBUGOUT("ioctlsocket call succeeded without initializing winsock\n");
 #endif
 		}
 	}
@@ -47,7 +48,7 @@ void ini(CCLient * client,int fd, sockaddr_in sinaddr)
 }
 
 
-CCLient::CCLient(SOCKET fd, struct sockaddr_in sinaddr, int timeout,CClientManager* cman)//:m_databuf(MAX_CMD_BUF_LEN)
+CCLient::CCLient(SOCKET fd, struct sockaddr_in sinaddr,CClientManager* cman)//:m_databuf(MAX_CMD_BUF_LEN)
 {
 	
 	m_cman =cman;
@@ -64,8 +65,9 @@ void CCLient::ReInit(SOCKET fd, struct sockaddr_in sinaddr)
 
 void CCLient::Close()
 {
-	shutdown(_fd ,2 );
+	shutdown(_fd ,SD_BOTH );
 	closesocket(_fd);
+	_fd = INVALID_SOCKET;
 }
 
 CCLient::~CCLient()
@@ -102,13 +104,7 @@ bool CCLient::parse(U8 *recvbuf,int ulen)
 		recvbuf[len] =0;
 		char *p= (char *) recvbuf;
 
-#ifdef _DEBUG
-		OutputDebugString("接收到:");
-		OutputDebugString((const char*)recvbuf);
-		// cout << len << "字节" << endl;
-#endif
-			
-		
+
 		int i=0,j=0;
 		//
 		while (i<len)
@@ -149,7 +145,21 @@ bool CCLient::parse(U8 *recvbuf,int ulen)
 
 int CCLient::sendback( const char* data,int len)
 {
-	g_log.log(data,LOG_LOG_LEVEL);
+	try
+	{
+		char temp[8]={0};
+		int ret = send(_fd, (char*)data, len, 0);
+		string log("\ttoIMEI=");
+		log.append(this->imei);
+		log.append(",return");
+		log.append(itoa(ret,temp ,10));
+		log.append(data);
+		g_log.log(log.c_str(),LOG_LOG_LEVEL);
 	
-	return send(_fd, (char*)data, len, 0);
+		return ret;
+	}
+	catch(...)
+	{	
+	}
+	return 0;
 }

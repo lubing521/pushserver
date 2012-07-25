@@ -1,17 +1,22 @@
 // ClientManager.cpp: implementation of the CClientManager class.
 // 客户端管理类
-// 1.
+// 1.每2秒去遍历一边是否有超时的“僵尸”连接
+// 2.添加新的连接到队列
+// 3.删除需要关闭的连接
+// 4.
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "client.h"
 #include "Worker.h"
 #include "ClientManager.h"
-#include "client.h"
+ 
 
 using namespace  std;
 
 extern CFG g_cfg;
+
+static void CClientManager::run( LPVOID lpParam );
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -41,9 +46,9 @@ CClientManager::~CClientManager()
 //when get imei ,add to map.
 void CClientManager::AddToQueue(string imei, CCLient* pclient)
 {	
-	LogExt(LOG_LOG_LEVEL, "[IMEI]:get %s",imei.c_str());
-
-	const CLIENT_MAP::iterator it = clientqueue.find(imei);
+	LogExt(LOG_LOG_LEVEL, "[IMEI]:get %s\t",imei.c_str());
+	strncpy(pclient->imei,imei.c_str(),IMEI_LEN);
+	CLIENT_MAP::iterator it = clientqueue.find(imei);
 	if (it != clientqueue.end())
 	{
 		it->second = pclient;
@@ -59,7 +64,7 @@ void CClientManager::AddToQueue(string imei, CCLient* pclient)
 //
 void CClientManager::DeleteFromQueue(string imei)
 {	
-	const CLIENT_MAP::iterator it = clientqueue.find(imei);
+	CLIENT_MAP::iterator it = clientqueue.find(imei);
 	if (it != clientqueue.end())
 	{
 		it->second = NULL;	
@@ -114,11 +119,14 @@ void CClientManager::KillClient(CCLient * temp)
 	{
 		DeleteFromQueue(temp->imei);
 	}
+	memset(temp->imei,0,sizeof(temp->imei));
+	temp->Close();
+
 	EnterCriticalSection(&cs);
 	activeList.remove(temp);
     idleList.push_back(temp);
 	LeaveCriticalSection(&cs);
-	temp->Close();
+	
 	
 }
 
@@ -130,4 +138,80 @@ CLIENT_MAP* CClientManager::getClientMap()
 void CClientManager::setworker(CWorker* p)
 {
 	mpworker = p;
+}
+
+void CClientManager::start()
+{
+	if (INVALID_HANDLE_VALUE == this->mEvent)
+	{
+		this->creatwork( CClientManager::run );
+	}
+}
+
+void CClientManager::stop()
+{	
+	SetEvent(this->mEvent);
+	WaitForSingleObject( this->hthread ,3000);
+	CloseHandle(this->mEvent);
+}
+
+void CClientManager::killTimeoutClient()
+{
+	EnterCriticalSection(&cs);
+	CLIENT_MAP::iterator it = clientqueue.begin();
+	
+	int ret=0;
+	DWORD op;
+	int oplen =sizeof(DWORD);
+
+	while (it != clientqueue.end())
+	{
+
+		if(it->second && 0== strlen(it->second->imei) /*&& t - it->second->createtime > g_cfg.outtime*/ )
+		{		
+			ret = getsockopt(it->second->_fd,SOL_SOCKET,SO_CONNECT_TIME,(char*)&op,&oplen);
+			if (0==ret)
+			{
+				if (op > 2 )  //秒
+				{
+					activeList.remove(it->second);
+					idleList.push_back(it->second);
+					it->second = NULL;
+					DEBUGOUT("[log]remove socket\n");
+
+				}
+			}
+			
+		}
+		++it;
+	}	
+	LeaveCriticalSection(&cs);
+}
+
+void CClientManager::run( LPVOID lpParam )
+{
+	DWORD dwResult = 0 ;
+	CClientManager* p = (CClientManager*) lpParam ;
+
+	while(!allExitFlag )
+	{
+		dwResult = WaitForSingleObject(p->mEvent, 2000);
+		if (!allExitFlag )
+		{
+			if(WAIT_OBJECT_0 == dwResult)
+			{				
+				CloseHandle(p->mEvent);
+				break;
+			}
+			else 
+			{
+				p->killTimeoutClient();	
+			}			
+		}
+		else
+		{
+			CloseHandle(p->mEvent);
+			break;
+		}
+	}
 }

@@ -16,7 +16,7 @@ public:
 	virtual ~CCKThread();
 	virtual void start();
 	virtual void stop();
-	virtual void ckSetEvent();
+	void ckSetEvent();
 protected:
 
 	HANDLE	mEvent;

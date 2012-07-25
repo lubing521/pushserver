@@ -42,7 +42,7 @@ void LogExt(int loglevel,const char* lpszFormat,...)
 
 		va_end(args);
 		
-		OutputDebugString(szBuffer);
+		DEBUGOUT(szBuffer);
 
 		if(DEBUG_ONLY_LEVEL == loglevel)
 		{
@@ -70,6 +70,10 @@ void LogExt(int loglevel,const char* lpszFormat,...)
 
 Clog::Clog():m_log_level(DEBUG_ONLY_LEVEL),initedflag(false),m_port(0)
 {
+#ifdef MEMMAP
+	iniMemMapFile();
+#endif
+
 	strcpy(m_ip,"127.0.0.1");
 
 	WSADATA   wsaData; 
@@ -99,7 +103,7 @@ void Clog::close()
 #else
 	shutdown(sockfd ,SD_BOTH );
 	closesocket(sockfd);
-	
+	sockfd = INVALID_SOCKET;
 #endif
 }
 
@@ -117,7 +121,7 @@ bool Clog::log(const char* msg,int loglevel)
 		try
 		{
  		#ifdef _DEBUG
- 			OutputDebugString(msg );
+ 			DEBUGOUT(msg );
  		#endif
 		}
 		catch(CSeException *e)
@@ -125,8 +129,8 @@ bool Clog::log(const char* msg,int loglevel)
 			exceptiontolog(e);
 		}
 		//return true;
-		//writelog(getExePath().c_str(),"log",msg);
-		//return true;
+		writelog(getExePath().c_str(),"log",msg);
+		return true;
 
 		if (!initedflag)
 		{

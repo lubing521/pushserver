@@ -38,7 +38,7 @@ typedef struct
 
 bool DataBaseIni(const char *m_strServerName, const char *m_strUserName,const char *m_strPassword,const char *m_strDBName,unsigned int port);
 
-bool loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei);
+void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei);
 bool BBT_DOSQL(const char *psql);
 void BBT_DisConn();
 

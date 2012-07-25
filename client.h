@@ -28,7 +28,7 @@
 #include <iostream>
 #include <time.h>
 #include "api.h"
-#include "fixcoll.h"
+
 
 
 
@@ -41,7 +41,7 @@ class CCLient
 {
 public:
     enum {BUFFERSIZE = 4*1024};
-    CCLient(SOCKET fd, struct sockaddr_in sinaddr, int timeout,CClientManager* cman);
+    CCLient(SOCKET fd, struct sockaddr_in sinaddr, CClientManager* cman);
     ~CCLient();
 
 	void ReInit(SOCKET fd, struct sockaddr_in sinaddr);
@@ -53,7 +53,7 @@ public:
 
 
 	SOCKET _fd;
-	time_t m_timeout;
+
 	int offset;			///buffer offset
 	char imei[IMEI_LEN+1];
 
@@ -63,9 +63,10 @@ public:
 private:
 	sockaddr_in m_sinaddr;
     U8 *recvbuf;
-
+	
+	
  
-	char sendbacktmp[601];
+	
 
 };
 
