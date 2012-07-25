@@ -6,13 +6,23 @@ QQ：87895224
  I'm learning programing on server,such as windows server 2003,linux server.
  I'm most familiar with c/c++,and know other languages such as java,perl, ruby,php,vb... 
  I know GIS,GPS,VoiceCard,mobile phone etc.
+ Contact me, please.
 2012.7
 
 
 pushserver
 
 pushserver routine is a service that running on windows server 2003.
-
+Mobile device can connect to server by HTTP protocal,and server will send someting back.
+protocal as below:
+client(mobile device):
+   "GET http://domainname:port/please?imei=[15个数字的IMEI号码] HTTP/1.1 \r\n"
+server:
+    "{"statuscode":"1","title":"title text","text":"content text","cmd":"[jump url code]"}\r\n"   
+	or
+	"{"statuscode":"0"}"
+	
+	
 推送服务程序
 本推送服务程序设计为在windows server 2003上运行的后台服务程序。手机等终端可以通过HTTP协议连接到服务器；
 连接协议如下：
