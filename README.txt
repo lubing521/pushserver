@@ -2,6 +2,10 @@
 Email：zzsg2005@126.com 
 QQ：87895224
 简介：6年桌面软件开发，5年手机软件开发，2年后台软件开发。目前在学习后台和网站架构设计与软件开发；最熟悉C/C++，也熟悉其它多种语言、数据库；欢迎联系我。
+ I'm a programer, six years desktop software programing;five years mobile device software programing,such as infineon,mtk,android, and two years server software programing.
+ I'm learning programing on server,such as windows server 2003,linux server.
+ I'm most familiar with c/c++,and know other languages such as java,perl, ruby,php,vb... 
+ I know GIS,GPS,VoiceCard,mobile phone etc.
 2012.7
 
 
