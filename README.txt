@@ -16,7 +16,7 @@ pushserver routine is a service that running on windows server 2003.
 服务器端：【直接下发json格式的结果，不给标准应答格式如header】
  {"statuscode":"1","title":"标题文本","text":"内容","cmd":"[跳转指令字]"}\r\n
  
- 手机终端会定期连接后台服务器，后台服务程序检查数据库，看是否有信心给此手机终端；如果没有则下发{"statuscode":"0"}；如果有则按json格式下发信息。
+ 手机终端会定期连接后台服务器，后台服务程序检查数据库，看是否有信息给此手机终端；如果没有则下发{"statuscode":"0"}；如果有则按json格式下发信息。
  
  后台服务程序，难点在大并发连接的处理，故本程序采用了完成端口（IOCP）；
  对于恶意连接的处理，采用了一个线程检测每一个socket的连接时间的方式；
