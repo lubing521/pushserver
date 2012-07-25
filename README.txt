@@ -21,7 +21,8 @@ server:
     "{"statuscode":"1","title":"title text","text":"content text","cmd":"[jump url code]"}\r\n"   
 	or
 	"{"statuscode":"0"}"
-	
+mobile device will send GET request  regularly,and server send something back , and close socket.
+ 
 	
 推送服务程序
 本推送服务程序设计为在windows server 2003上运行的后台服务程序。手机等终端可以通过HTTP协议连接到服务器；
