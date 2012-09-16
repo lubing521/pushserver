@@ -1,0 +1,14 @@
+# Microsoft Developer Studio Generated Dependency File, included by NotificationService.mak
+
+.\NotificationService.cpp : \
+	".\NotificationService.h"\
+	".\StdAfx.h"\
+	
+
+.\NotificationService.rc : \
+	".\NotificationService.rgs"\
+	
+
+.\StdAfx.cpp : \
+	".\StdAfx.h"\
+	

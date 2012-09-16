@@ -1,0 +1,20 @@
+// NotificationService.idl : IDL source for NotificationService.dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (NotificationService.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(D7A6B873-84AD-413E-AB3D-96DF339BB601),
+	version(1.0),
+	helpstring("NotificationService 1.0 Type Library")
+]
+library NOTIFICATIONSERVICELib
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+};

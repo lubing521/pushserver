@@ -1,0 +1,41 @@
+// NotificationDll.idl : IDL source for NotificationDll.dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (NotificationDll.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+	[
+		object,
+		uuid(9FD8910B-01BF-40F1-B38C-936611C8DFC2),
+		dual,
+		helpstring("INotify Interface"),
+		pointer_default(unique)
+	]
+	interface INotify : IDispatch
+	{
+		[id(1), helpstring("method start")] HRESULT start(void);
+		[id(2), helpstring("method stop")] HRESULT stop(void);
+		[id(3), helpstring("method set_cb")] HRESULT set_cb(long* pcb);
+	};
+
+[
+	uuid(66B2C5F4-5360-49E7-B1E9-01A8A1B90D61),
+	version(1.0),
+	helpstring("NotificationDll 1.0 Type Library")
+]
+library NOTIFICATIONDLLLib
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	[
+		uuid(A26B7E05-9E4A-4297-8225-5673ACFA22F8),
+		helpstring("Notify Class")
+	]
+	coclass Notify
+	{
+		[default] interface INotify;
+	};
+};

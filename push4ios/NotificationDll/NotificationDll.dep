@@ -1,0 +1,10 @@
+# Microsoft Developer Studio Generated Dependency File, included by NotificationDll.mak
+
+.\NotificationDll.cpp : \
+	".\NotificationDll.h"\
+	".\StdAfx.h"\
+	
+
+.\StdAfx.cpp : \
+	".\StdAfx.h"\
+	

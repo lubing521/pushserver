@@ -1,0 +1,26 @@
+HKCR
+{
+	NotificationDll.Notify.1 = s 'Notify Class'
+	{
+		CLSID = s '{A26B7E05-9E4A-4297-8225-5673ACFA22F8}'
+	}
+	NotificationDll.Notify = s 'Notify Class'
+	{
+		CLSID = s '{A26B7E05-9E4A-4297-8225-5673ACFA22F8}'
+		CurVer = s 'NotificationDll.Notify.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {A26B7E05-9E4A-4297-8225-5673ACFA22F8} = s 'Notify Class'
+		{
+			ProgID = s 'NotificationDll.Notify.1'
+			VersionIndependentProgID = s 'NotificationDll.Notify'
+			ForceRemove 'Programmable'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{66B2C5F4-5360-49E7-B1E9-01A8A1B90D61}'
+		}
+	}
+}

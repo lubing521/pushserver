@@ -1,0 +1,11 @@
+HKCR
+{
+	NoRemove AppID
+	{
+		{55FF821C-F385-4631-B6DD-334417E895DB} = s 'NotificationService'
+		'NotificationService.EXE'
+		{
+			val AppID = s {55FF821C-F385-4631-B6DD-334417E895DB}
+		}
+	}
+}
