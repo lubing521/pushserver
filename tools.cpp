@@ -19,116 +19,20 @@
 using namespace std;
 
 #ifdef MEMMAP
-HANDLE hMapFile;
-void* pvFile=0;
-unsigned char *pmapbuf=0;
-unsigned char *pmapbuf_head=0;
-UINT imemfilelen;
-#define FILE_CACHE_SIZE 0x00001000  /*  4k */ 
-
-void iniMemMapFile()
-{
-	//创建文件的内存映射文件。
-	hMapFile=CreateFileMapping(
-		(HANDLE)0xFFFFFFFF,
-		NULL,
-		PAGE_READWRITE, //对映射文件进行读写
-		(DWORD)(FILE_CACHE_SIZE>>32),
-		(DWORD)(FILE_CACHE_SIZE & 0xFFFFFFFF), //这两个参数共64位，所以支持的最大文件长度为16EB
-		NULL);
-	if(hMapFile==INVALID_HANDLE_VALUE)
-	{
-		//AfxMessageBox("Can't create file mapping.Error%d:\n", GetLastError());
-		OutputDebugStr("CreateFileMapping fail!");
-		return;
-	}
-	
-	//把文件数据映射到进程的地址空间
-	pvFile=MapViewOfFile(
-		hMapFile,
-		FILE_MAP_READ|FILE_MAP_WRITE,
-		0,
-		0,
-		0);
-	pmapbuf = (unsigned char*)pvFile;
-	pmapbuf_head =  pmapbuf;
-	imemfilelen = 0;
-	
-	OutputDebugStr("ini ok!");
-}
-
-bool writetoMemMapFile(const char* buf,int len)
-{
-	imemfilelen += len;
-	//OutputDebugStr("imemfilelen= %d",imemfilelen);
-	
-	if (NULL!=pmapbuf && imemfilelen <FILE_CACHE_SIZE)
-	{		
-		memcpy(pmapbuf, buf,len);// imemfilelen);
-		//OutputDebugStr("pmapbuf= %p",pmapbuf);
-		pmapbuf += len;
-		//OutputDebugStr("==>%p\n",pmapbuf);
-		
-	}
-	else
-	{	
-		OutputDebugStr("writelogfile");
-		writelogfile();
-		return false;
-	}
-	return true;
-}
-
-///内存映射文件满才写一次磁盘
-bool writelogfile()
-{
-#ifdef WIN32
-#define MAXTIMELEN 23
-#else
-#define MAXTIMELEN 19
-#endif
-	
-	if (0==imemfilelen || 0==pmapbuf_head)
-	{
-		return false;
-	}
-    char sfile[256];
-	char ndate[24];
-	memset(ndate,0,sizeof(ndate));
-	memset(sfile,0,sizeof(sfile));
-	strcpy(sfile,getExePath().c_str());
-	strcat(sfile,"\\");
-	/*取时间*/
-	getnowdate(ndate);	
-	left(ndate,0,10,sfile+strlen(sfile));
-	mkdir(sfile);
-	strcat(sfile,"\\");
-	left(ndate,11,2,sfile+strlen(sfile));
-	//strcat(sfile,getnowdate(ndate));
-	strcat(sfile,".log");
-	
-	FILE *fp;
-	fp = fopen(sfile,"a+");
-	if(fp == NULL)
-	{
-#ifdef _DEBUG
-		char gtext[40];
-		sprintf(gtext,"fail to fopen(%s,\"a+\")!",sfile);
-		OutputDebugStr(gtext);
-#endif	
-		return false;
-	}
-	
-	fprintf(fp,"%s\t%s\n",ndate,pmapbuf_head);
-	
-	fclose(fp);
-	
-	imemfilelen=0;
-	pmapbuf    = pmapbuf_head;
-	return true;
-}
 
 #endif
+void printexception(const char* file,int line,const char* functionname)
+{
+	char buf[64];
+	 
+	string  strfile(file);
+	string::size_type pos = strfile.find_last_of("\\");
+	sprintf(buf,DEBUGFMT,strfile.substr(pos+1,strfile.length()).c_str(),line,functionname);
+	DEBUGOUT(buf);
+	writelogimmediatly(buf);
+}
+
+
 
 /*取当前时间 格式:YYYY-MM-DD HH:MI:SS:mmm*/
 char *getnowdate(char *nowdate)
@@ -169,6 +73,19 @@ char *getnowdate(char *nowdate)
 	return nowdate;
 }
 
+char *getYYYYMMDD(char *nowdate)
+{
+	time_t timer;
+	struct tm *ltm;
+	timer = time(NULL);
+	ltm = localtime(&timer);
+	sprintf(nowdate,"%04d%02d%02d",
+		ltm->tm_year + 1900,
+		ltm->tm_mon + 1,
+		ltm->tm_mday);
+	
+	return nowdate;
+}
 char getday()
 {
 	time_t timer;
@@ -383,71 +300,6 @@ char *right(char *str,int start,int len,char *des)
 	return des;
 }
 
-/*写日志文件*/
-int writelog(const char* path,const char *type,const char *msg)
-{
-	
-	 	writetoMemMapFile(msg,strlen(msg));
-	// 
-	 	return 1;
-	
-	////////////////////////////////
-	char nowdate[24];
-	char fname[250];
-	char str[100];
-	
-	FILE *fp;
-	
-	char dir[256];     //	"TCPLOG/";
-#ifdef WIN32
-#define MAXTIMELEN 23
-#else
-#define MAXTIMELEN 19
-#endif
-	
-	strcpy(dir,path);
-	char * p= dir+ strlen(dir)-1;
-	if ('\\' != *p)
-	{
-		strcat(dir,"\\");
-	}
-	strcat(dir,type);
-	
-	mkdir(dir);		
-	
-	strcat(dir,"\\");
-	
-	
-	/*取时间*/
-	getnowdate(nowdate);	
-	left(nowdate,0,10,dir+strlen(dir));
-	mkdir(dir);
-	
-	/*取文件名*/
-	sprintf(fname,"%s\\%s_",dir,type);
-	left(nowdate,11,2,str);
-	
-	strcat(fname,str);
-	strcat(fname,".log");
-	
-	/*写文件日志*/
-	fp = fopen(fname,"a+");
-	if(fp == NULL)
-	{
-#ifdef _DEBUG
-		char gtext[40];
-		sprintf(gtext,"fail to fopen(%s,\"a+\")!",fname);
-		DEBUGOUT(gtext);
-#endif	
-		return 0;
-	}
-	
-	fprintf(fp,"%s\t%s\n",left(nowdate,0,MAXTIMELEN,str),msg);
-	
-	fclose(fp);
-	
-	return 1;
-}
 
 
 /*分割参数*/
@@ -1568,4 +1420,51 @@ void CChineseCode::UTF_8ToGB2312(string &pOut, char *pText, int pLen)
 	pOut = newBuf;    
 	delete []newBuf;  
 	return;    
+}
+int writelogimmediatly(const char *msg)
+{
+	char sfile[256];
+	char ndate[24];
+	
+	memset(ndate,0,sizeof(ndate));
+	memset(sfile,0,sizeof(sfile));
+	strcpy(sfile,getExePath().c_str());
+	strcat(sfile,"\\");
+	/*取时间*/
+	getnowdate(ndate);	
+	left(ndate,0,10,sfile+strlen(sfile));
+	mkdir(sfile);
+	strcat(sfile,"\\");
+	left(ndate,11,2,sfile+strlen(sfile));
+	//strcat(sfile,getnowdate(ndate));
+	strcat(sfile,".log");
+	
+	FILE *fp;
+	
+	char dir[256]={0};     //	"TCPLOG/";
+#ifdef WIN32
+#define MAXTIMELEN 23
+#else
+#define MAXTIMELEN 19
+#endif
+	
+	
+	/*写文件日志*/
+	fp = fopen(sfile,"a+");
+	if(fp == NULL)
+	{
+#ifdef _DEBUG
+		char gtext[40];
+		sprintf(gtext,"fail to fopen(%s,\"a+\")!",sfile);
+		DEBUGOUT(gtext);
+#endif	
+		return 0;
+	}
+	
+	fprintf(fp,"%s\t%s\n",ndate,msg);
+	
+	fclose(fp);
+	
+	
+	return 1;
 }

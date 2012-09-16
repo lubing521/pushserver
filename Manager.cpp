@@ -21,12 +21,14 @@
 
 #include "Manager.h"
 //////////////////////////////////////////////////////////////////////
-bool allExitFlag	 = false;     //exception exit
+bool volatile allExitFlag	 = false;     //exception exit
 
 Clog	g_log;
 CFG		g_cfg;
 
 CRITICAL_SECTION g_cs;//info map 
+
+extern CManager gmanager;
 //////////////////////////////////////////////////////////////////////////
 
 
@@ -61,19 +63,19 @@ void readcfg()
 	g_cfg.db_ip="";
 	g_cfg.db_ip.append(str);
 	g_cfg.db_port = GetPrivateProfileInt("DBSERVER", "PORT", 3306, filepath.c_str());
-	//
-	g_cfg.outtime = GetPrivateProfileInt("LINK", "outtime", 1, filepath.c_str());
+	//“恶意”连接多久关闭，单位秒
+	g_cfg.outtime = GetPrivateProfileInt("LINK", "outtime", 10, filepath.c_str());
 	
-	
+	writelogimmediatly("[log][readcfg]ok.\n");
 }
 
 ////从内部（异常）退出
 void setallthreadexitflag()
 {
+	DEBUGOUT("[setallthreadexitflag]\n\n");
 	allExitFlag = true;
 	
-	g_log.log("[exception]setallthreadexitflag !!!",ERROR_LEVEL);
-	stopFrommyInter();
+	gmanager.stopFrommyInter();
 	
 }
 
@@ -81,45 +83,70 @@ void setallthreadexitflag()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CManager::CManager()
+CManager::CManager():cbfun(NULL)
 {
  InitializeCriticalSection(&g_cs);
 }
 
 CManager::~CManager()
 {
-
 	DeleteCriticalSection(&g_cs);
-	g_log.log("[Manager]程序退出.",LOG_LOG_LEVEL);
+	DEBUGOUT("[Manager]程序退出.\n");
 }
 
 void CManager::start()
 {
-	g_log.log("[Manager]程序启动.",LOG_LOG_LEVEL);
+	allExitFlag = false;
+	
+	writelogimmediatly("[log][Manager]程序启动.\n");
 	readcfg();
 
-	loader.init(&g_cfg);
-	loader.start();
+	try
+	{
+		loader.init(&g_cfg);
+		loader.start();
+	}
+	catch (...)
+	{
+		writelogimmediatly("[err][loader]数据库连接失败，请检查配置和数据库服务器是否正常.\n");
+		setallthreadexitflag();
+		return;
+	}
+	
 
 	clientmanager.setworker(&worker); //for setevent to worker
 	clientmanager.start();
-
+	
 	worker.init(&clientmanager,&loader);
 	worker.start();
 
-	server.init(&g_cfg,&clientmanager,&loader);
-	server.Listen();
+	server.init(&g_cfg,&clientmanager,&loader);	
 	server.start();
 	
 }
 
 void CManager::stop()
 {	
+
+	if (allExitFlag)
+	{
+		return;
+	}
 	allExitFlag = true;	
 
 	server.stop();
 	clientmanager.stop();
 	worker.stop();
 	loader.stop();
+	writelogimmediatly("[log][Manager]程序退出.\n");
 }
 
+void CManager::stopFrommyInter()
+{
+	if (cbfun)
+	{
+		cbfun();
+	}
+	
+	
+}

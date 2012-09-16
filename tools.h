@@ -4,7 +4,7 @@
 using namespace std ;
 
 #include "SeException.h"
-
+void printexception(const char* file,int line,const char* functionname);
 
 BOOL Unicode16ToAnsiL(WCHAR *in_Src, INT in_SrcLen, CHAR *out_Dst, INT in_MaxLen);
 void GetFromID(char *simno, const char* data);
@@ -74,14 +74,15 @@ string getExePath(void);
 void LogExt(int loglevel,const char* lpszFormat,...);
 
 #ifdef MEMMAP
-extern HANDLE hMapFile;
-extern void* pvFile;
-extern unsigned char *pmapbuf;
-extern unsigned char *pmapbuf_head;
-extern UINT imemfilelen;
-void iniMemMapFile();
-bool writetoMemMapFile(const char* buf,int len);
-bool writelogfile();
+// extern HANDLE hMapFile;
+// extern void* pvFile;
+// extern unsigned char *pmapbuf;
+// extern unsigned char *pmapbuf_head;
+// extern UINT imemfilelen;
+// void iniMemMapFile();
+// void closeMMapFile();
+// bool writetoMemMapFile(const char* buf,int len);
+// bool writelogfile();
 #endif
 
 

@@ -13,16 +13,21 @@ class CClientManager;
 class CWorker;
 class CLoader;
 
+typedef void (*CBSTOPFUNC)();
+
 class CManager  
 {
 public:
 	CManager();
 	virtual ~CManager();
 
+	void stopFrommyInter();
 
+	//
 	void start();
 	void stop();
 
+	CBSTOPFUNC cbfun;
 private:
 	CServer			server;
 	CClientManager	clientmanager;

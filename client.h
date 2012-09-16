@@ -33,14 +33,14 @@
 
 
 using namespace std;
-#define MAXBUF (1024*4) 
+#define MAXBUF (1024*24) 
 #define U8 unsigned char
 
 class CClientManager;
 class CCLient
 {
 public:
-    enum {BUFFERSIZE = 4*1024};
+    enum {BUFFERSIZE = 24*1024};
     CCLient(SOCKET fd, struct sockaddr_in sinaddr, CClientManager* cman);
     ~CCLient();
 
@@ -58,7 +58,10 @@ public:
 	char imei[IMEI_LEN+1];
 
 	PER_IO_DATA   IoData;        
-    CClientManager* m_cman;  
+    
+	CClientManager* m_cman; 
+	
+	time_t delay_time;//delay for kill
 	
 private:
 	sockaddr_in m_sinaddr;

@@ -22,26 +22,30 @@ public:
 
 
 	void AddToQueue(string imei, CCLient* client);
-	void DeleteFromQueue(string imei);
+	
 	long GetActiveSize();
 	bool CanGetNewClient();
 	CCLient* GetClient();
 	void PushNewIn(CCLient *);
 	void KillClient(CCLient *);
-	
+		
 	CLIENT_MAP* getClientMap();
 	void setworker(CWorker*);
 
 	void start();
 	void stop();
 	void killTimeoutClient();
+
 private:
+	void DeleteFromQueue(string imei);
+
 	CLIENT_MAP clientqueue;
 	CWorker* mpworker;
 	
 	std::list<CCLient *> activeList;	//活动队列
 	std::list<CCLient *> idleList;	//空闲队列
 	CRITICAL_SECTION cs;
+	CRITICAL_SECTION queue_cs;
 
 	static void run( LPVOID lpParam );
 };

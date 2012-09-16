@@ -36,25 +36,22 @@ void ini(CCLient * client,int fd, sockaddr_in sinaddr)
 		if( err != 0 )
 		{
 #ifdef DEBUG
-			DEBUGOUT("ioctlsocket call succeeded without initializing winsock\n");
+			DEBUGOUT("[error][ini]ioctlsocket call succeeded without initializing winsock\n");
 #endif
 		}
 	}
 	catch(...)
 	{
-		g_log.log(TEXT("client new exception12!\n"),CRITICAL_LEVEL);
+		g_log.log(TEXT("[exception][ini]!\n"),CRITICAL_LEVEL);
 	}
 	
 }
 
 
-CCLient::CCLient(SOCKET fd, struct sockaddr_in sinaddr,CClientManager* cman)//:m_databuf(MAX_CMD_BUF_LEN)
+CCLient::CCLient(SOCKET fd, struct sockaddr_in sinaddr,CClientManager* cman)
 {
-	
 	m_cman =cman;
 	ini(this,fd,sinaddr);
-	m_timeout = timeout;
-	
 	
 }
 
@@ -65,9 +62,13 @@ void CCLient::ReInit(SOCKET fd, struct sockaddr_in sinaddr)
 
 void CCLient::Close()
 {
-	shutdown(_fd ,SD_BOTH );
-	closesocket(_fd);
-	_fd = INVALID_SOCKET;
+	if (INVALID_SOCKET != _fd)
+	{		
+		shutdown(_fd ,SD_BOTH );
+		closesocket(_fd);
+		_fd = INVALID_SOCKET;
+	}
+	
 }
 
 CCLient::~CCLient()
@@ -89,7 +90,7 @@ bool CCLient::parse(U8 *recvbuf,int ulen)
 	{
 		if( err != WSAECONNRESET )
 		{
-			g_log.log("peer reset the connection\n",DEBUG_ONLY_LEVEL);
+			g_log.log("[log][CCLient]parse.peer reset the connection\n",DEBUG_ONLY_LEVEL);
 		}
 		
 	}
@@ -113,7 +114,7 @@ bool CCLient::parse(U8 *recvbuf,int ulen)
 				&& ('E'==p[i+2] || 'e'==p[i+2]) && ('I'==p[i+3] ||'i'==p[i+3]))
 			{
 				j =i+5; //j=> first #
-				if (j + 15 > len)///有<1个imei 
+				if (j + IMEI_LEN > len)///有<1个imei 
 				{						
 					offset = len-i;
 					memcpy(p,p+i,offset);
@@ -124,11 +125,12 @@ bool CCLient::parse(U8 *recvbuf,int ulen)
 				{						
 					//get one;
 					string imei;	
-					imei.append((p+j),15);
+					imei.append((p+j),IMEI_LEN);
 					
 					this->m_cman->AddToQueue(imei,this);
-					i= j+16;
-					j= i;
+					//i= j+16;
+					//j= i;
+					break;
 				}
 				
 			}
@@ -148,14 +150,16 @@ int CCLient::sendback( const char* data,int len)
 	try
 	{
 		char temp[8]={0};
-		int ret = send(_fd, (char*)data, len, 0);
-		string log("\ttoIMEI=");
+		int ret = send(_fd, data, len, 0);
+#ifdef LOGLOG
+		string log("[log][CCLient]toIMEI[");
 		log.append(this->imei);
-		log.append(",return");
+		log.append("][ret");
 		log.append(itoa(ret,temp ,10));
+		log.append("]");
 		log.append(data);
 		g_log.log(log.c_str(),LOG_LOG_LEVEL);
-	
+#endif	
 		return ret;
 	}
 	catch(...)

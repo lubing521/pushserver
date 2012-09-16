@@ -41,8 +41,8 @@ break;
 
 void exceptiontolog (CSeException *e)
 {
-	TCHAR trcMsg[512];
-	e->GetErrorMessage(trcMsg,512);
+	TCHAR trcMsg[512]={0};
+	e->GetErrorMessage(trcMsg,511);
 	LogExt(DEBUG_ONLY_LEVEL,trcMsg);
 	//e->ReportError();
 	e->Delete();
@@ -112,7 +112,7 @@ BOOL CSeException::GetErrorMessage(string & CsErrDescr, PUINT pnHelpContext /*= 
 
 	if (pnHelpContext != NULL)
 		*pnHelpContext = 0;
-	char  buffer[88];
+	char  buffer[514];
 	switch (m_nSeCode)    {   
 		CASE(ACCESS_VIOLATION,buffer);
 		CASE(DATATYPE_MISALIGNMENT,buffer);

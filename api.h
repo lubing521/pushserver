@@ -34,6 +34,15 @@ typedef enum
 	CRITICAL_LEVEL,   ///重要：如果是错误则需要重启，如果是正常，则是重要信息
 }LOG_LEVEL;
 
+#define  LOG_EMERG   "0" //用于紧急消息, 常常是那些崩溃前的消息.
+#define  LOG_ALERT   "1" //需要立刻动作的情形
+#define  LOG_CRIT    "2" //严重情况, 常常与严重的硬件或者软件失效有关.
+#define  LOG_ERR     "3" //用来报告错误情况;
+#define  LOG_WARNING "4" //有问题的情况的警告, 这些情况自己不会引起系统的严重问题
+#define  LOG_NOTICE  "5" //正常情况, 但是仍然值得注意. 在这个级别一些安全相关的情况会报告.
+#define  LOG_INFO    "6" //信息型消息. 在这个级别, 很多驱动在启动时打印它们发现的硬件的信息.
+#define  LOG_DEBUG   "7"  //用作调试消息
+
 
 #define CKMIN(a,b) ((a)>(b)?(b):(a))
 #define CKERROR (-1)
@@ -60,34 +69,54 @@ using namespace std;
  {
  public:
 	 Cinfo();
-	 Cinfo(char* mtitle,char* minfo,char* mcmd,time_t t,UINT mid){
-		 strcpy(title,mtitle);
-		 strcpy(info,minfo);
-		 strcpy(cmd,mcmd);
-		 expired = t;
-		 ID =mid;
+	 Cinfo(const char* mtitle,const char* minfo,const char* mcmd,time_t start,time_t stop,const char* sendid,unsigned int sendcount){
+		 title=mtitle;
+		 info=minfo;
+		 cmd=mcmd;
+		 expired = stop;
+		 starttime = start;
+		 send_id = sendid;
+		 send_count=sendcount;
 	 }
-	 UINT ID;            //信息ID
+	 string send_id;            //信息Send_ID
+	 time_t starttime;
 	 time_t expired; //timestamp 过期时间
-	 char cmd[CK_CMD_MAX_LEN]; //指令
-	 char title[CK_MAX_TITLE_LEN+1];//标题
-	 char info[CK_MAX_INFO_LEN+1];  //内容
+	 string cmd; //指令
+	 string title;//标题
+	 string info;  //内容
+	 unsigned int send_count;
 	 
  };
 
  
 //终端队列 imei is key
 typedef std::map<string, CCLient*> CLIENT_MAP;
-//信息列表  id is key
-typedef std::map<UINT,Cinfo*> INFO_MAP;
-//database imei,infoid map
-typedef std::map<string, UINT> IMEIID_MAP;
+//信息列表  send_id is key
+typedef std::map<string,Cinfo*> INFO_MAP;
+//database imei,send_id map
+typedef std::map<string, string> IMEIID_MAP;
 
 //
 typedef vector< HANDLE > HL;  //线程句柄集合
 typedef HL::iterator HLI;     //线程句柄指针
 // 
+////autolock 自动锁
+class CAutoLock
+{
+public:
+	CAutoLock(CRITICAL_SECTION *pcs):m_pcs(pcs)
+	{
+		EnterCriticalSection(m_pcs);
+	}
+	~CAutoLock(){
+		LeaveCriticalSection(m_pcs);
+	}
 
+private:
+	CRITICAL_SECTION * m_pcs;
+};
+
+//
 /****************************************************************** 
 * per_io 数据 
 *******************************************************************/ 
@@ -122,11 +151,11 @@ typedef struct
 extern void LogExt(int loglevel,const char* lpszFormat,...);
 
 ///////////
+char *getYYYYMMDD(char *nowdate);
 void stopFrommyInter();
 void setallthreadexitflag();
 void exceptiontolog (CSeException *e);
-extern bool allExitFlag;
-extern bool stopServiceFlag;
+extern bool volatile allExitFlag;
 
 extern Clog	g_log;
 extern CRITICAL_SECTION g_cs;
@@ -134,6 +163,8 @@ extern CRITICAL_SECTION g_cs;
 
 #ifdef _DEBUG
 	#define DEBUGOUT  OutputDebugString
+#else
+	#define DEBUGOUT
 #endif
 
 class CFG{
@@ -142,7 +173,8 @@ public:
 	unsigned int	local_port;     //监听端口
 	unsigned int max_works_num;  //工作线程个数
 	unsigned int max_clients_num;
-	
+	//out time
+	unsigned int outtime;//client 连接后多久必须发送GET请求
 	string local_ip;     
 	//mysql 
 	string db_ip; 
@@ -150,7 +182,18 @@ public:
 	string db_user;
 	string db_psw;
 	string db_name;
+
 	
 };
+struct tcp_keepalive_in
+{
+    ULONG onoff;
+    ULONG keepalivetime;
+    ULONG keepaliveinterval;
+};
+#ifndef SIO_KEEPALIVE_VALS
+#define SIO_KEEPALIVE_VALS    _WSAIOW(IOC_VENDOR, 4)
+#endif
 
+int writelogimmediatly(const char *msg);
 #endif 

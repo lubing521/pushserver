@@ -38,12 +38,12 @@ bool CCKThread::creatwork(void (__cdecl * run) (void *))
 		if ( NULL!= this->hthread  )
 		{	
 #ifdef _DEBUG
-			LogExt(DEBUG_ONLY_LEVEL,"creatwork  [0x%0x]handle[0x%0x]\n",this,this->hthread);
+			LogExt(DEBUG_ONLY_LEVEL,"[log][CCKThread]creatwork[0x%0x]handle[0x%0x]\n",this,this->hthread);
 #endif
 		}
 		else
 		{			
-			g_log.log("[err]create works fail\n",ERROR_LEVEL);
+			g_log.log("[error][CCKThread]create works fail\n",ERROR_LEVEL);
 			
 			allExitFlag =true;
 			return false;
@@ -53,9 +53,12 @@ bool CCKThread::creatwork(void (__cdecl * run) (void *))
 	}
 	catch(CSeException *e)
 	{
+#ifdef _DEBUG
+		printexception(DEBUGARGS);
+#endif
 		exceptiontolog(e);
 		setallthreadexitflag();
-		g_log.log("[exception]creatwork exception!\n",CRITICAL_LEVEL);
+		g_log.log("[exception][CCKThread]creatwork exception!\n",CRITICAL_LEVEL);
 	}
 	return false;
 	

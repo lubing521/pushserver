@@ -10,7 +10,7 @@
 
 #include "DB.h"
 #include "log.h"
-//#include "config.h"
+
 
 
 
@@ -24,18 +24,6 @@ extern CFG g_cfg;
 ///全局数据库连接指针
 
 MYSQL *conn= NULL;
-
-
- 
-#define _FIELD_COPY(d,s) memcpy((d),LPCTSTR(s),(s).GetLength()>sizeof(d)?sizeof(d):(s).GetLength());
-
-#define _DBT_TRY try{
-
-#define _DBT_CATCH(x) }catch(...){\
-                 LogExt(ERROR_LEVEL,"函数%s异常，请检查网络连接或数据库\n",(x));\
-				}
-
-
 
 bool DataBaseIni(const char *m_strServerName, const char *m_strUserName,const char *m_strPassword,const char *m_strDBName,
 				 unsigned int port)
@@ -56,97 +44,31 @@ bool DataBaseIni(const char *m_strServerName, const char *m_strUserName,const ch
 	return true;
 
 }
-// mysql> SELECT UNIX_TIMESTAMP('2005-03-27 03:00:00');
-// +---------------------------------------+
-// | UNIX_TIMESTAMP('2005-03-27 03:00:00') |
-// +---------------------------------------+
-// |                            1111885200 |
-// +---------------------------------------+
-// mysql> SELECT UNIX_TIMESTAMP('2005-03-27 02:00:00');
-// +---------------------------------------+
-// | UNIX_TIMESTAMP('2005-03-27 02:00:00') |
-// +---------------------------------------+
-// |                            1111885200 |
-// +---------------------------------------+
-// mysql> SELECT FROM_UNIXTIME(1111885200);
-// +---------------------------+
-// | FROM_UNIXTIME(1111885200) |
-// +---------------------------+
-// | 2005-03-27 03:00:00       |
-// +---------------------------+
-// 
-// create table Table_BaseInfo_PushMsg
-// (
-//  id                   int not null,
-//  title                varchar(64),
-//  body                 varchar(128),
-//  link_page_id         int,
-//  start_time           timestamp,  //TIMESTAMP WITHOUT TIME ZONE
-//  stop_time            timestamp,  //TimestampTz WITH TIME ZONE
-//  send_count           int,
-//  primary key (id)
-//  );
-// 
-// alter table Table_BaseInfo_PushMsg comment '推送消息';
-
-// create table Table_Relation_PushMsg_Mobile
-// (
-//  id                   int not null,
-//  push_msg_id          int,
-//  imei                 varchar(15),
-//  primary key (id)
-// );
-//unix_timestamp()，返回自1970-1-1 0:00:01开始到当前系统时间为止的秒数。
-//from_unixtime(unixtime)
-//time_t
-//It is almost universally expected to be an integral value representing 
-//the number of seconds elapsed since 00:00 hours, Jan 1, 1970 UTC. 
-//This is due to historical reasons, since it corresponds to a unix timestamp,
-// but is widely implemented in C libraries across all platforms.
 ////////////////////////
 /// 
 void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 {
-
-
 	try
 	{
-			// 信息表
-			// *表    Table_BaseInfo_PushMsg
-			//  主键  id        //int 序号
-			//  字段  title      //varchar 标题
-			//  字段  body		  //varchar 内容
-			//  字段  link_page_id    //int //跳转指令
-			//  字段  stop_time //timestamp //过期时间  
-			//
-			
-		string strQry;
-		string strVal;
-		 
-		//delete outtime info
-		EnterCriticalSection(&g_cs);
-		INFO_MAP::iterator it  = mapinfo->begin();
-		INFO_MAP::iterator it2 = it;
-		while (it != mapinfo->end()) 
-		{
-			if (time(NULL) > it->second->expired)
-			{
-				delete it->second ;
-				it2 = it;
-				++it2;
-				mapinfo->erase(it);
-				it= it2;
-			}
-			else
-			{
-				++it;
-			}
+		
+		INFO_MAP::iterator it=NULL; 
+
+		if(0 != mysql_ping(conn))
+		{			
+			string pstr("[error][SQL]");
+			pstr+= mysql_error(conn);
+			pstr+="\n";
+			g_log.log(pstr.c_str(),ERROR_LEVEL);
+			return;
 		}
-		LeaveCriticalSection(&g_cs);
-		//
-        ///get info list
-		//: 确认查询语句字段名等正确
-		switch(	mysql_query(conn, "SELECT id,title,body,link_page_id,UNIX_TIMESTAMP(stop_time) FROM Table_BaseInfo_PushMsg where CURRENT_TIMESTAMP() < stop_time order by id ;"))
+
+
+        ///get info list//开始时间《now && 结束时间>now order by send_id
+		 
+		switch(	mysql_query(conn, "SELECT send_id,title,body,link_page_id,UNIX_TIMESTAMP(start_time), \
+			                        UNIX_TIMESTAMP(stop_time),send_count FROM hly.Table_BaseInfo_PushMsg \
+									where stop_time>Now() and Now()>start_time \
+									order by send_id;"))
 		{
 		case CR_COMMANDS_OUT_OF_SYNC:
 			DEBUGOUT("CR_COMMANDS_OUT_OF_SYNC");
@@ -164,43 +86,111 @@ void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 			break;
 		}
 		MYSQL_RES *result = mysql_store_result(conn);
-		assert(NULL!=result);
-		MYSQL_ROW row;
-		int num_fields;
-		UINT idd=0;
+		if(NULL==result)
+		{
+			return;
+		}
 
-		num_fields = mysql_num_fields(result);
+		MYSQL_ROW row;
+		//int num_fields;
+				
+		string stitle("0");
+		string sinfo("0");
+		string scmd("0");
+		string ssendid("000000000000");
+		string ssendcount("0");
+
+		//num_fields = mysql_num_fields(result);
 		
 		while ((row = mysql_fetch_row(result)))
 		{
-		 
-			idd  = atol(row[0]);  
-			it= mapinfo->find(idd); 
-			if (it == mapinfo->end() )
+			
+			if (NULL!=row[1])
 			{
-				//UTF8  //unix_timestamp is time_t
-				Cinfo * info=new Cinfo(row[1],row[2],row[3], (time_t)row[4], idd); 
-				if (info)
+				stitle =row[1];
+			}
+			else
+			{
+				stitle="null";
+			}
+			if (NULL!=row[2])
+			{
+				sinfo = row[2];
+			}
+			else
+			{
+				sinfo ="null";
+			}
+			if (NULL!=row[3])
+			{
+				scmd = row[3];
+			}
+			else
+			{
+				scmd = "null";
+			}
+			if (NULL!=row[6])
+			{
+				ssendcount = row[6];
+			}
+			else
+			{
+				ssendcount = "0";
+			}
+
+			ssendid  = trim_BLANK(row[0]);  
+			{//auto lock block
+				CAutoLock Lock(&g_cs);
+				it= mapinfo->find(ssendid);			
+				if (it == mapinfo->end() )
 				{
-					EnterCriticalSection(&g_cs);		
-					mapinfo->end();                              //从数据库中查询到的数据始终应该比内存中的新
-					mapinfo->insert(pair<UINT, Cinfo*>(idd,info));	//<id,info>	//必须有序	
-					LeaveCriticalSection(&g_cs);
+					//UTF8  //unix_timestamp is time_t
+
+					//Cinfo(char* mtitle,char* minfo,char* mcmd,time_t start,time_t stop,char* sendid,UINT sendcount)
+#ifdef _DEBUG		
+					char debuginfo[500];
+					memset(debuginfo,0,sizeof(debuginfo));
+					sprintf(debuginfo,"[log][loaddb]send_id=%s,cmd=%s,title=%s\n",ssendid.c_str(),scmd.c_str(),stitle.c_str());
+					writelogimmediatly(debuginfo);
+#endif
+					Cinfo * info=new Cinfo(stitle.c_str(),sinfo.c_str(),scmd.c_str(), (time_t)atoi(row[4]), (time_t)atoi(row[5]),ssendid.c_str(),atoi(ssendcount.c_str())); 
+					
+					if (info)
+					{
+								
+						 //从数据库中查询到的数据始终应该比内存中的新
+						mapinfo->insert(pair<string, Cinfo*>(ssendid,info));	//<id,info>	//必须有序	
+						
+	#ifdef _DEBUG
+						LogExt(DEBUG_ONLY_LEVEL,"\n[log][loaddb]mapinfo->insert(%s)\n", ssendid.c_str());
+	#endif
+					}
+					else
+					{
+						g_log.log("[exception][loaddb]new fail!\n",ERROR_LEVEL);
+					
+						throw exception("[newerror]");
+					}		
 				}
 				else
 				{
-					LogExt(ERROR_LEVEL,"mysql error[%s]", mysql_error(conn));
-					throw exception("[newerror]");
-				}		
-			}
+					it->second->cmd        = scmd;
+					it->second->expired    = (time_t)atoi(row[5]);
+					it->second->info       = sinfo;
+					it->second->send_count = atoi(ssendcount.c_str());
+					it->second->send_id    = ssendid;
+					it->second->starttime  = (time_t)atoi(row[4]);
+					it->second->title      = stitle;
+				}
+		
+			}//auto lock block
 			
 		}
 		
 		mysql_free_result(result);
 
 		// : get imei -id   list
-		//TODO: 确认查询语句字段名等正确
-		switch(	mysql_query(conn, "SELECT imei,push_msg_id FROM  Table_Relation_PushMsg_Mobile ;"))
+		switch(	mysql_query(conn, "SELECT imei,push_msg_id FROM  hly.Table_Relation_PushMsg_Mobile;"))
 		{
 		case CR_COMMANDS_OUT_OF_SYNC:
 			DEBUGOUT("CR_COMMANDS_OUT_OF_SYNC");
@@ -218,14 +208,17 @@ void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 			break;
 		}
 		result = mysql_store_result(conn);
-		assert(NULL!=result);
+		if(NULL==result)
+		{
+			return;
+		}
 		
-		num_fields = mysql_num_fields(result);
+		//num_fields = mysql_num_fields(result);
 		
 		while ((row = mysql_fetch_row(result)))
 		{
 			
-			mapimei->insert(pair<string, UINT>(row[0], atol(row[1])));	//<imei,id>	//无序	
+			mapimei->insert(pair<string, string>(row[0], row[1]));	//<imei,send_id>	//无序	
 		}
 		mysql_free_result(result);
 	
@@ -233,30 +226,42 @@ void loaddb(INFO_MAP * mapinfo,IMEIID_MAP* mapimei)
 			
 	}
 	catch(...)
-	{
-		LogExt(CRITICAL_LEVEL,TEXT("[exception]loaddb exception13!\n"));
+	{		
+		g_log.log("[exception][loaddb]!\n",CRITICAL_LEVEL);
 	}
+	
 	return ;
-	
-	
 }
          
 bool BBT_DOSQL(const char *psql)
 {
 	if(0!= mysql_query(conn, psql))	
-	{
-		LogExt(ERROR_LEVEL,"[EXEC SQL]err:%s", mysql_error(conn));
+	{	
+		char buf[16];
+		memset(buf,0,sizeof(buf));
+
+		string pstr("[error][SQL][");
+		pstr+=itoa(time(NULL),buf,10);
+		pstr+="][";
+		pstr+=psql;
+		pstr+="]\n";
+		pstr+=mysql_error(conn);
+		pstr+="\n";
+		g_log.log(pstr.c_str(),ERROR_LEVEL);
+
 		return false;
 	}
 	else
 	{
-		g_log.log("[EXEC SQL]ok",LOG_LOG_LEVEL);
 		return true;
 	}
 }
 
 void BBT_DisConn()
 {
-	g_log.log("[SQL]mysql close connect.",LOG_LOG_LEVEL);
-	mysql_close(conn);
+	if (conn)
+	{
+		mysql_close(conn);
+		conn = NULL;
+	}
 }

@@ -6,12 +6,16 @@
 #define AFX_SERVER_H__B519D0FF_87DF_46BA_866E_98D6122B09BD__INCLUDED_
 
 #include "sender.h"
+
 using namespace std;
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
+class CLoader;
+class CClientManager;
+class CCKThread;
 class CServer : public CCKThread 
 {
 public:

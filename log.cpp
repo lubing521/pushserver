@@ -13,6 +13,8 @@
 #include "api.h"
 #include <string>
 #include <iostream>
+#include "direct.h"
+
 using namespace std;
 
 #ifdef _DEBUG
@@ -29,7 +31,7 @@ extern Clog g_log;
 
 void LogExt(int loglevel,const char* lpszFormat,...)
 {
-	
+#ifdef LOGLOG
 	_set_se_translator(SeTranslator);
 	try
 	{
@@ -42,7 +44,7 @@ void LogExt(int loglevel,const char* lpszFormat,...)
 
 		va_end(args);
 		
-		DEBUGOUT(szBuffer);
+		//DEBUGOUT(szBuffer);
 
 		if(DEBUG_ONLY_LEVEL == loglevel)
 		{
@@ -58,22 +60,248 @@ void LogExt(int loglevel,const char* lpszFormat,...)
 	}
 	catch(CSeException *e)
 	{
-		g_log.log("LogExt exception!",CRITICAL_LEVEL);
+		g_log.log("[exception][LogExt]!",CRITICAL_LEVEL);
 		exceptiontolog(e);		
 		
 	}
 
+#endif
 }
+
+#ifdef MEMMAP
+
+
+void Clog::iniMemMapFile()
+{	
+	//创建文件的内存映射文件。
+	hMapFile1=CreateFileMapping(
+		(HANDLE)0xFFFFFFFF,
+		NULL,
+		PAGE_READWRITE, //对映射文件进行读写
+		(DWORD)(FILE_CACHE_SIZE>>32),
+		(DWORD)(FILE_CACHE_SIZE & 0xFFFFFFFF), //这两个参数共64位，所以支持的最大文件长度为16EB
+		NULL);
+	if(hMapFile1==INVALID_HANDLE_VALUE)
+	{		
+		OutputDebugStr("CreateFileMapping fail!");
+		return;
+	}
+	
+	//把文件数据映射到进程的地址空间
+	pvFile1=MapViewOfFile(
+		hMapFile1,
+		FILE_MAP_READ|FILE_MAP_WRITE,
+		0,
+		0,
+		0);
+	//2
+	hMapFile2=CreateFileMapping(
+		(HANDLE)0xFFFFFFFF,
+		NULL,
+		PAGE_READWRITE, 
+		(DWORD)(FILE_CACHE_SIZE>>32),
+		(DWORD)(FILE_CACHE_SIZE & 0xFFFFFFFF), 
+		NULL);
+	if(hMapFile2==INVALID_HANDLE_VALUE)
+	{		
+		OutputDebugStr("CreateFileMapping fail!");
+		return;
+	}
+	
+	
+	pvFile2=MapViewOfFile(
+		hMapFile2,
+		FILE_MAP_READ|FILE_MAP_WRITE,
+		0,
+		0,
+		0);
+	
+	g_membuf1 =(unsigned char*)pvFile1;
+	g_membuf2 =(unsigned char*)pvFile2;
+	
+	pmapbuf = g_membuf1;
+	pmapbuf_head =  pmapbuf;
+	imemfilelen = 0;
+}
+
+void Clog::closeMMapFile()
+{
+	writelogfile(pmapbuf_head,imemfilelen);
+	UnmapViewOfFile(pvFile1);
+	UnmapViewOfFile(pvFile2);
+	CloseHandle(hMapFile1);
+	CloseHandle(hMapFile2);
+}
+///内存映射文件满才写一次磁盘
+bool Clog::writelogfile(unsigned char *mmbuf ,int ilen)
+{
+#ifdef LOGLOG
+	
+ #ifdef WIN32
+   #define MAXTIMELEN 23
+ #else
+   #define MAXTIMELEN 19
+ #endif
+	static bool doingflg =false;
+	if (!doingflg)
+	{
+		doingflg = true;
+	}
+	else
+	{
+		return true;
+	}
+	
+	if (0==ilen || 0==mmbuf)
+	{
+		doingflg = false;
+		return false;
+	}
+	mmbuf[ilen] ='\0';
+	
+    char sfile[256];
+	char ndate[24];
+	memset(ndate,0,sizeof(ndate));
+	memset(sfile,0,sizeof(sfile));
+	strcpy(sfile,getExePath().c_str());
+	strcat(sfile,"\\");
+	/*取时间*/
+	getnowdate(ndate);	
+	left(ndate,0,10,sfile+strlen(sfile));
+	mkdir(sfile);
+	strcat(sfile,"\\");
+	left(ndate,11,2,sfile+strlen(sfile));
+	//strcat(sfile,getnowdate(ndate));
+	strcat(sfile,".log");
+	
+	FILE *fp;
+	fp = fopen(sfile,"a+");
+	if(fp == NULL)
+	{
+    #ifdef _DEBUG
+		char gtext[40];
+		sprintf(gtext,"fail to fopen(%s,\"a+\")!",sfile);
+		OutputDebugStr(gtext);
+    #endif	
+		doingflg = false;
+		return false;
+	}
+	
+	fprintf(fp,"%s\t%s\n",ndate,mmbuf);
+	
+	fclose(fp);
+	
+	doingflg = false;
+	
+#endif
+	
+	return true;
+	
+}
+
+bool Clog::writetoMemMapFile(const char* buf,int len)
+{	
+#if 0
+	try
+	{
+#endif
+		{
+			CAutoLock Lock(&log_sc);
+
+			imemfilelen += len;
+			
+			if (NULL!= pmapbuf && imemfilelen < HALF_CACHE_SIZE)
+			{		
+				memcpy(pmapbuf, buf,len);
+				pmapbuf += len;
+			}
+			else
+			{
+				if (pmapbuf_head == this->g_membuf1) //1 满
+				{
+					pmapbuf_head = g_membuf2;
+					pmapbuf_c = g_membuf1;
+				} 
+				else
+				{
+					pmapbuf_head = g_membuf1;
+					pmapbuf_c = g_membuf2;
+				}
+				
+				pmapbuf    = pmapbuf_head;	
+				imemfilelen_c = imemfilelen - len;
+				imemfilelen = len;
+				
+				if (NULL!= pmapbuf && imemfilelen < HALF_CACHE_SIZE)
+				{		
+					memcpy(pmapbuf, buf,len);				
+					pmapbuf += len;
+				}
+				
+				writelogfile(pmapbuf_c,imemfilelen_c);
+			}
+
+		}
+#if 0
+	}
+	catch(...)
+	{	
+#ifdef _DEBUG
+		printexception(DEBUGARGS);
+#endif
+	//	setallthreadexitflag();
+
+	}
+#endif	
+
+
+	return true;
+}
+#endif
+
+
+
+
+/*写日志文件*/
+int Clog::writelog(const char* path,const char *type,const char *msg)
+{
+#ifdef LOGLOG
+
+	#ifdef MEMMAP
+			
+		writetoMemMapFile(msg,strlen(msg));
+		
+	#else	
+		////////////////////////////////
+		writelogimmediatly(msg);
+	#endif
+#endif
+
+	return 1;
+}
+
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-Clog::Clog():m_log_level(DEBUG_ONLY_LEVEL),initedflag(false),m_port(0)
+Clog::Clog():m_log_level(CRITICAL_LEVEL)
+#ifdef LOGTOREMOTE
+	,initedflag(false),m_port(0)
+#endif
 {
 #ifdef MEMMAP
+	hMapFile1 = INVALID_HANDLE_VALUE;
+	hMapFile2 = INVALID_HANDLE_VALUE;
+	pvFile1   = 0;
+	pvFile2   = 0;
+	imemfilelen  =0 ;
+	pmapbuf_head = NULL;
+	pmapbuf      = NULL;
 	iniMemMapFile();
+	InitializeCriticalSection(&log_sc);
 #endif
-
+#ifdef LOGTOREMOTE
 	strcpy(m_ip,"127.0.0.1");
 
 	WSADATA   wsaData; 
@@ -89,49 +317,59 @@ Clog::Clog():m_log_level(DEBUG_ONLY_LEVEL),initedflag(false),m_port(0)
 #endif
 		writelog(getExePath().c_str(),"log","Clog::Connect socket error!");
 	}
+#endif
 }
 
 Clog::~Clog()
 {
+#ifdef MEMMAP
+	closeMMapFile();
+	DeleteCriticalSection(&log_sc);
+#endif
+#ifdef LOGTOREMOTE
 	close();
 	WSACleanup();//和WSAStartup必须配对使用
-}
-void Clog::close()
-{
-#ifdef LINUX
-    close(_fd);
-#else
-	shutdown(sockfd ,SD_BOTH );
-	closesocket(sockfd);
-	sockfd = INVALID_SOCKET;
 #endif
 }
+#ifdef LOGTOREMOTE
+void Clog::close()
+{
+	
+	#ifdef LINUX
+		close(_fd);
+	#else
+		shutdown(sockfd ,SD_BOTH );
+		closesocket(sockfd);
+		sockfd = INVALID_SOCKET;
+	#endif
+	
+}
+#endif
 
 void Clog::setloglevel(int loglevel)
 {
 	m_log_level=loglevel;
 }
+
 bool Clog::log(const char* msg,int loglevel)
 {
-
+#ifdef LOGLOG
 	_set_se_translator(SeTranslator);
 	try
 	{
-		_set_se_translator(SeTranslator);
-		try
+		#ifdef _DEBUG
+		
+		if (strlen(msg)<=510)
 		{
- 		#ifdef _DEBUG
- 			DEBUGOUT(msg );
- 		#endif
+			DEBUGOUT(msg );
 		}
-		catch(CSeException *e)
-		{
-			exceptiontolog(e);
-		}
-		//return true;
+		
+		#endif
+	
 		writelog(getExePath().c_str(),"log",msg);
 		return true;
 
+#ifdef LOGTOREMOTE
 		if (!initedflag)
 		{
 			inicfg();
@@ -155,6 +393,7 @@ bool Clog::log(const char* msg,int loglevel)
 				}
 			}
 		}
+#endif
 	}
 	catch(CSeException *e)
 	{
@@ -162,10 +401,16 @@ bool Clog::log(const char* msg,int loglevel)
 		
 		g_log.log("CClientlog::log except!",CRITICAL_LEVEL);
 	}
+#else
+	DEBUGOUT(msg);
+#endif
 
 	return true;
 
 }
+
+#ifdef LOGTOREMOTE
+
 bool Clog::Connect()
 {
 	_set_se_translator(SeTranslator);
@@ -201,11 +446,12 @@ bool Clog::Connect()
 	{
 		exceptiontolog(e);
 		
-// 		g_log.log("Clog::Connect except!",CRITICAL_LEVEL);
+
 	}
 	
 	return true;
 }
+
 bool Clog::SetRecvTimeOut(int t)
 {
 	int timeout = t; //ms
@@ -255,3 +501,5 @@ bool Clog::inicfg()
 
 	return true;
 }
+
+#endif

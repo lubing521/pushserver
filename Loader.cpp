@@ -30,7 +30,7 @@ CLoader::~CLoader()
 void CLoader::init(CFG* cfg)
 {
 	mpMapInfo = &minfo;
-
+	
 	DataBaseIni(cfg->db_ip.c_str(),cfg->db_user.c_str(),cfg->db_psw.c_str(),cfg->db_name.c_str(),cfg->db_port);
 }
 
@@ -40,60 +40,82 @@ void CLoader::start()
 	{
 		creatwork(CLoader::run);
 	}
+	writelogimmediatly("[log][CLoader]start ok.\n");
 }
 
 void CLoader::stop()
 {
-	SetEvent(mEvent);
-	WaitForSingleObject( hthread ,3000);
-	CloseHandle(mEvent);
-	mapImeiId.clear();
-	minfo.clear();
-	
-	BBT_DisConn();
+	if (INVALID_HANDLE_VALUE !=mEvent)
+	{
+		SetEvent(mEvent);
+		WaitForSingleObject( hthread ,3000);
+		CloseHandle(mEvent);
+		mEvent = INVALID_HANDLE_VALUE;
 
+		mapImeiId.clear();
+
+		INFO_MAP::iterator it= minfo.begin();
+		while(it!= minfo.end())
+		{
+			delete it->second;
+			it = minfo.erase(it);
+		}
+		minfo.clear();
+		
+		BBT_DisConn();
+		writelogimmediatly("[log][CLoader]stop.\n");
+	}
 }
 //load data from database low frequency
 void CLoader::run( LPVOID lpParam )
 {
 	DWORD dwResult = 0 ;
-	CLoader* ploader = (CLoader*) lpParam ;
+	CLoader* ploader = static_cast<CLoader*>(lpParam) ;
 
 	_set_se_translator(SeTranslator);
 	try
 	{
-	//
-	while(!allExitFlag )
-	{
-		dwResult = WaitForSingleObject(ploader->mEvent, 60*1000);//60*1000
-		if (!allExitFlag )
+		loaddb(ploader->mpMapInfo,ploader->getImeiIdMap());
+
+		while(!allExitFlag )
 		{
-			if(WAIT_OBJECT_0 == dwResult)//to exit
+			dwResult = WaitForSingleObject(ploader->mEvent, 60*1000);//60*1000
+			if (!allExitFlag )
+			{
+				if(WAIT_OBJECT_0 == dwResult)//to exit
+				{
+					CloseHandle(ploader->mEvent);
+					break;
+				}
+				else if (WAIT_TIMEOUT == dwResult)//to work
+				{
+					// db to  mapImeiId mapinfo
+					loaddb(ploader->mpMapInfo,ploader->getImeiIdMap());
+
+				}
+			}
+			else
 			{
 				CloseHandle(ploader->mEvent);
 				break;
 			}
-			else if (WAIT_TIMEOUT == dwResult)//to work
-			{
-				// db to  mapImeiId mapinfo
-				loaddb(ploader->mpMapInfo,ploader->getImeiIdMap());
-
-			}
 		}
-		else
-		{
-			CloseHandle(ploader->mEvent);
-			break;
-		}
-	}
 
 	}
 	catch(CSeException *e)
 	{
 		exceptiontolog(e);
+#ifdef _DEBUG
+		printexception(DEBUGARGS);
+#endif
 		setallthreadexitflag();
-		g_log.log("Loader exception!\n",CRITICAL_LEVEL);
+		g_log.log("[exception][Loader]!\n",CRITICAL_LEVEL);
 	}
+	 
+#ifdef _DEBUG
+	DEBUGOUT("[log][CLoader]run exit\n");
+	LogExt(WARNNING_LEVEL,"[log][CLoader]run exit ID[0x%0x]\n",GetCurrentThreadId());
+#endif
 }
 
 
